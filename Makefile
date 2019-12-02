@@ -17,4 +17,6 @@
 
 all:
 	g++ main.cpp utils.h transpose_openmp.h -o main -fopenmp -O2 -Wall -std=c++11
- 
+
+only_main: 
+	g++ main.cpp -o only_main -fopenmp -O2 -Wall -std=c++11
