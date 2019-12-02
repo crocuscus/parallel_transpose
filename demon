@@ -1,0 +1,21 @@
+#!/usr/bin/python3
+import sys
+from time import sleep
+import subprocess
+
+lines = []
+with open("/home_edu/edu-cmc-skpod19-327/edu-cmc-skpod19-327-12/tmp_log") as log:
+    lines = log.readlines()
+while lines[-1] != "END!":
+    w, t, i = list(map(int, lines[-1].split()))
+    if len(lines) > 1 and lines[-1] == lines[-2]:
+        with open("/home_edu/edu-cmc-skpod19-327/edu-cmc-skpod19-327-12/log", 'a') as another_log:
+            print('TL', file=another_log)
+        t += 1
+        i = 0
+    subprocess.call(["/home_edu/edu-cmc-skpod19-327/edu-cmc-skpod19-327-12/main", str(w), str(t), str(i)])
+    print("i'm here")
+
+
+    with open("/home_edu/edu-cmc-skpod19-327/edu-cmc-skpod19-327-12/tmp_log") as log:
+        lines = log.readlines()
