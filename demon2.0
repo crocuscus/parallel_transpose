@@ -1,0 +1,40 @@
+#!/usr/bin/python3
+import os
+from time import sleep
+import sys
+import subprocess
+import signal
+from subprocess import check_output
+from threading import Timer
+
+FILE_PREFIX = '/home_edu/edu-cmc-skpod19-327/edu-cmc-skpod19-327-12/'
+LOG_NAME = 'log.csv'
+MEAN_LOG_NAME = 'mean.csv'
+THREADS_NUM = [2 ** x for x in range(8)]
+MATRIX_SIZE = [17000, 20000, 23000, 25000, 30000, 32000, 35000, 40000, 50000]
+
+
+def get_mean_time(num_thread, matrix_size, test_num=10):
+    fout = open(FILE_PREFIX + LOG_NAME, 'a')
+    sum_time = 0
+    for _ in range(test_num):
+        cmd = subprocess.Popen(
+            ["mpiexec", "-np", f"{num_thread}", "main", f"{matrix_size}"],
+            stdout=subprocess.PIPE,
+        )
+        stdout, stderr = cmd.communicate()
+        if stdout:
+            print(num_thread, matrix_size, float(str(stdout.decode('utf-8'))), file=fout, sep='|')
+        else:
+            print(num_thread, matrix_size, 'TL', file=fout, sep='|')
+
+        time = float(str(stdout.decode('utf-8'))) if stdout else 900000
+        sum_time += time
+    fout.close()
+    return sum_time / test_num
+
+
+for msize in MATRIX_SIZE:
+    with open(FILE_PREFIX + MEAN_LOG_NAME, 'a') as fout:
+        time = get_mean_time(1, msize)
+        print(msize, num_th, time, file=fout, sep='|')

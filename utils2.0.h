@@ -121,6 +121,30 @@ namespace NMatrix {
         return transposed_matrix;
     }
 
+    MatrixCellType* convertMatricToVoidPointer(const Matrix& matrix) {
+        MatrixSize size = getMatrixSize(matrix);
+        MatrixCellType* mem = new MatrixCellType[size.first * size.second];
+        for (MatrixSizeItem row = 0; row < size.first; row++) {
+            for (MatrixSizeItem column = 0; column < size.second; column++) {
+                mem[row * size.second + column] = matrix[row][column];
+            }
+        }
+        return mem;
+    }
+
+    Matrix convertVoidPointerToMatrix(const MatrixCellType* pointer, const MatrixSize &size) {
+        Matrix matrix;
+        matrix.resize(size.first);
+        for (MatrixSizeItem row = 0; row < size.first; row++) {
+            matrix[row].reserve(size.second);
+            for (MatrixSizeItem column = 0; column < size.second; column++) {
+                matrix[row].push_back(pointer[row * size.second + column]);
+            }
+        }
+        return matrix;
+    }
+
+
     void printMatrix(const Matrix& matrix) {
         // juts print matrix to stdout, use for debug
         assert(isMatrixCorrect(matrix) && "incorrect matrix shapes");

@@ -19,58 +19,95 @@ http://hpc.cs.msu.ru/
 */
 
 #include <iostream>
-#include <omp.h>
 #include <vector>
 #include <unistd.h>
-
-#include "utils.h"
-#include "transpose_openmp.h"
+#include <mpi.h>
 
 using std::cout;
 using std::vector;
-using namespace NMatrix;
 
+
+typedef size_t MatrixSizeItem;
+typedef std::pair<MatrixSizeItem, MatrixSizeItem> MatrixSize;
+typedef int MatrixCellType;
+typedef vector<vector<MatrixCellType> > Matrix;
+
+MatrixCellType getRandomCellItem(MatrixCellType low, MatrixCellType hight) {
+    return (rand() % (hight - low + 1)) + low;
+}
+
+Matrix getRandomMatrix(const MatrixSize& size, MatrixCellType low = -99, MatrixCellType hight = 99) {
+    // generate random matrix with shape = (size.first, size.second)
+    Matrix matrix = Matrix();
+    matrix.resize(size.first);
+
+    for (MatrixSizeItem row = 0; row < size.first; row++) {
+        matrix[row].reserve(size.second);
+        for (MatrixSizeItem column = 0; column < size.second; column++) {
+            matrix[row].push_back(getRandomCellItem(low, hight));
+        }
+    }
+    return matrix;
+}
+
+MatrixSize getMatrixSize(const Matrix& matrix) {
+    if (matrix.size() == 0) {
+        return std::pair<MatrixCellType, MatrixCellType>(0, 0);
+    }
+    return std::pair<MatrixCellType, MatrixCellType>(matrix.size(), matrix[0].size());
+}
+
+MatrixSize swapMatrixSize(const MatrixSize& size) {
+    // just swap matris shapes
+    return std::pair<MatrixCellType, MatrixCellType>(size.second, size.first);
+}
+
+Matrix createMatrixForTranspose(const Matrix& matrix) {
+    MatrixSize transposed_size = swapMatrixSize(getMatrixSize(matrix));
+    Matrix transposed_matrix = Matrix();
+    transposed_matrix.resize(transposed_size.first);
+    for (MatrixSizeItem row = 0; row < transposed_size.first; row++) {
+        transposed_matrix[row].resize(transposed_size.second);
+    }
+    return transposed_matrix;
+}
+
+void transpose_MPI(const Matrix& matrix, Matrix &transposed_matrix, MatrixSizeItem start, MatrixSizeItem step) {
+    MatrixSize transposed_size = getMatrixSize(transposed_matrix);
+    for (MatrixSizeItem row_t = start; row_t < transposed_size.first; row_t += step) {
+        for (MatrixSizeItem column_t = 0; column_t < transposed_size.second; column_t++) {
+            transposed_matrix[row_t][column_t] = matrix[column_t][row_t];
+        }
+    }
+}
 
 int main(int argc, char* argv[]) {
-    #ifdef _OPENMP
-        printf("OpenMP is supported! %d \n\n", _OPENMP);
-    #endif
+    MPI_Init(&аrgс, &аrgv);
+    int rank, size, width;
 
-    int w, t, i;
+    scanf(argv[1], "%lu", &width);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    sscanf(argv[1], "%d", &w);
-    sscanf(argv[2], "%d", &t);
-    sscanf(argv[3], "%d", &i);
-
-    vector<int> thread_num = {1, 2, 4, 8, 16, 32, 64, 128};
-    vector<int> widths = {17000, 20000, 23000, 25000, 28000, 30000, 32000, 35000, 40000, 50000, 60000};
-
-    for (; w < widths.size(); ++w) {
-        for (; t < thread_num.size(); ++t) {
-            for (; i < 13; ++i) {
-                FILE* fout = fopen("log", "a");
-		FILE* log = fopen("tmp_log", "a");
-		fprintf(log, "%d %d %d\n", w, t, i);
-		fclose(log);
-                int width = widths[w];
-                int threads = thread_num[t];
-                omp_set_num_threads(threads);
-                fprintf(fout, "%d, %d, %d,", i, width, threads);
-                fclose(fout);
-                long double openmp_time =  measureTimeOfTranspose(
-                    transpose_OpenMP,
-                    {width, width}
-                );
-                fout = fopen("log", "a");
-                fprintf(fout, " %.3Lf\n", openmp_time * 1000);
-                fclose(fout);
-	    }
-	    i = 0;
-        }
-        t = 0;
+    Matrix matrix, transposed_matrix;
+    if (!rank) {
+        matrix = getRandomMatrix({width, width}, -1e7, +1e7);
+        transposed_matrix = createMatrixForTranspose(matrix);
     }
-    FILE* log = fopen("tmp_log", "a");
-    fprintf(log, "END!");
-    fclose(log);
+    MPI_Bcast(matrix, width * width, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    long double mpi_time = MPI_Wtime();
+    transpose_MPI(matrix, transposed_matrix, rank, size);
+    mpi_time = MPI_Wtime() - mpi_time;
+    MPI_Barrier(MPI_COMM_WORLD);
+    long double res_time;
+    MPI_Reduce(mpi_time, res_time, 1, MPI_LONG_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (!rank) {
+        FILE *fout = fopen("log", "a");
+        fprintf(fout, "%Lf", res_time);
+        fclose(fout);
+    }
+    MPI_Finalize();
     return 0;
 }

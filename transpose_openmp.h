@@ -3,9 +3,12 @@
  *
  */
 
-#pragma once
+
 #include "utils.h"
 #include <omp.h>
+
+#ifndef TRANSPOSE_OPENMP
+#define TRANSPOSE_OPENMP
 
 namespace NMatrix {
 
@@ -21,3 +24,5 @@ namespace NMatrix {
     }
 
 }
+
+#endif

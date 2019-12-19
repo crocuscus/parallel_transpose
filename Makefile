@@ -15,8 +15,11 @@
 # DEFINES       = -DQT_DEPRECATED_WARNINGS -DQT_NO_DEBUG -DQT_GUI_LIB -DQT_CORE_LIB
 # CFLAGS        = -pipe -O2 -Wall -W -D_REENTRANT -fPIC $(DEFINES)
 
+# CFLAGS += $(shell mpicc -showme:compile)
+# LDFLAGS += $(shell mpicc -showme:link)
+
 all:
-	g++ main.cpp utils.h transpose_openmp.h -o main -fopenmp -O2 -Wall -std=c++11
+	mpiCC main.cpp utils.h transpose_openmp.h transpose_MPI.h -o main -fopenmp -O2 -Wall -std=c++11
 
 only_main: 
-	g++ main.cpp -o only_main -fopenmp -O2 -Wall -std=c++11
+	mpiCC main.cpp -o only_main -fopenmp -O2 -Wall -std=c++11
